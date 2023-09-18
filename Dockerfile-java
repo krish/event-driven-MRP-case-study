@@ -1,0 +1,20 @@
+FROM openjdk:8-jdk-alpine as build
+WORKDIR /opt/app
+COPY .mvn .mvn
+COPY mvnw pom.xml ./
+COPY src src
+
+RUN ./mvnw install -DskipTests
+RUN mkdir -p target/dependency && (cd target/dependency; jar -xf ../*.jar)
+
+FROM eclipse-temurin:8u352-b08-jdk-alpine as prod
+RUN addgroup processgroup; adduser  --ingroup processgroup --disabled-password processuser
+USER processuser
+WORKDIR /opt/app
+ARG DEPENDENCY=/opt/app/target/dependency
+COPY --from=build ${DEPENDENCY}/BOOT-INF/lib ./lib
+COPY --from=build ${DEPENDENCY}/META-INF ./META-INF
+COPY --from=build ${DEPENDENCY}/BOOT-INF/classes ./
+EXPOSE 8080
+
+ENTRYPOINT ["java","-cp",".:./lib/*", "org.krish.packagename.className"]
