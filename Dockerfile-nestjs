@@ -1,0 +1,29 @@
+#base
+FROM node:14.17.5@sha256:adbbb61dab70ea6e5a6c2ad7fba60e4d1047ba98ad1afcd631c15553163b22b7 as build
+
+# Set working dir to  /usr/src/app
+WORKDIR /usr/src/app
+# Copy application code to WORKDIR
+COPY . .
+RUN npm run build
+
+#rapid production
+FROM node:14.17.5-alpine@sha256:b8d48b515e3049d4b7e9ced6cedbe223c3bc4a3d0fd02332448f3cdb000faee1 as prod
+
+# Set working dir to  /usr/src/app
+WORKDIR /usr/src/app
+
+COPY --from=build /usr/src/app/dist ./dist
+RUN chown node:node -R /usr/src/app/dist
+
+# Set Permission to non-root user
+RUN chown node:node -R /usr/src/app/dist
+#  Run application using non-root user
+
+ENV NODE_OPTIONS=--max_old_space_size=4000
+
+RUN apk add curl
+USER node
+
+# Application run command
+CMD ["node", "dist/main"]
